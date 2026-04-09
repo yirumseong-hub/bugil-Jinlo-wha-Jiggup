@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>홈 시작 페이지</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { min-height: 100vh; font-family: sans-serif; }
+    #sky-svg {
+      position: fixed; top: 0; left: 0;
+      width: 100%; height: 100%;
+      z-index: 0; pointer-events: none;
+    }
+    #app {
+      position: relative; z-index: 1;
+      padding: 32px 24px;
+    }
+    .container {
+      max-width: 720px; margin: 0 auto;
+      display: flex; flex-direction: column; gap: 20px;
+    }
+    .glass {
+      background: rgba(0,0,0,0.22);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border: 1px solid rgba(255,255,255,0.22);
+      border-radius: 20px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+    }
+    .text-shadow { text-shadow: 0 1px 8px rgba(0,0,0,0.55), 0 2px 24px rgba(0,0,0,0.35); }
+
+    /* Clock card */
+    #clock-card { padding: 24px 28px; text-align: center; }
+    #time-display {
+      font-size: 58px; font-weight: 700; color: #fff;
+      letter-spacing: 2px; line-height: 1;
+      font-variant-numeric: tabular-nums;
+      text-shadow: 0 1px 8px rgba(0,0,0,0.55), 0 2px 24px rgba(0,0,0,0.35);
+    }
+    #date-display {
+      margin: 8px 0 20px; font-size: 15px;
+      color: rgba(255,255,255,0.85);
+      text-shadow: 0 1px 8px rgba(0,0,0,0.55), 0 2px 24px rgba(0,0,0,0.35);
+    }
+    #quote-area {
+      border-top: 1px solid rgba(255,255,255,0.2);
+      padding-top: 16px; cursor: pointer; min-height: 52px;
+    }
+    #quote-text {
+      margin: 0 0 6px; font-size: 15px; color: #fff; line-height: 1.55;
+      text-shadow: 0 1px 8px rgba(0,0,0,0.55), 0 2px 24px rgba(0,0,0,0.35);
+    }
+    #quote-author {
+      margin: 0; font-size: 12px;
+      color: rgba(255,255,255,0.6);
+      text-shadow: 0 1px 8px rgba(0,0,0,0.55), 0 2px 24px rgba(0,0,0,0.35);
+    }
+    #quote-hint {
+      margin: 8px 0 0; font-size: 10px;
+      color: rgba(255,255,255,0.35);
+      letter-spacing: 1px; text-transform: uppercase;
+    }
+    #quote-loading {
+      margin: 0; font-size: 13px;
+      color: rgba(255,255,255,0.5);
+      text-shadow: 0 1px 8px rgba(0,0,0,0.55);
+    }
+
+    /* Weather card */
+    #weather-card { padding: 20px 24px; }
+    .card-label {
+      margin: 0 0 12px; font-size: 12px;
+      color: rgba(255,255,255,0.7);
+      text-transform: uppercase; letter-spacing: 1px;
+    }
+    #weather-content {
+      display: flex; align-items: center;
+      justify-content: space-between; flex-wrap: wrap; gap: 12px;
+    }
+    #weather-main { display: flex; align-items: center; gap: 16px; }
+    #weather-icon { font-size: 52px; }
+    #weather-temp { font-size: 44px; font-weight: 700; color: #fff; line-height: 1; }
+    #weather-cond { font-size: 14px; color: rgba(255,255,255,0.85); margin-top: 2px; }
+    #weather-stats { display: flex; gap: 20px; }
+    .stat-item { text-align: center; }
+    .stat-label { font-size: 11px; color: rgba(255,255,255,0.65); }
+    .stat-value { font-size: 16px; font-weight: 600; color: #fff; }
+    #weather-loading { color: rgba(255,255,255,0.7); font-size: 14px; }
+
+    /* News card */
+    #news-card { padding: 20px 24px; }
+    .card-header {
+      display: flex; justify-content: space-between;
+      align-items: center; margin-bottom: 16px;
+    }
+    #refresh-btn {
+      background: rgba(255,255,255,0.2);
+      border: 1px solid rgba(255,255,255,0.3);
+      border-radius: 8px; color: #fff;
+      font-size: 11px; padding: 4px 10px; cursor: pointer;
+    }
+    #news-list { display: flex; flex-direction: column; gap: 0; }
+    .news-item {
+      display: flex; gap: 12px; align-items: flex-start;
+      padding: 12px 0;
+    }
+    .news-item:not(:last-child) { border-bottom: 1px solid rgba(255,255,255,0.15); }
+    .news-cat {
+      color: #fff; font-size: 10px; font-weight: 600;
+      padding: 3px 8px; border-radius: 6px;
+      white-space: nowrap; margin-top: 2px; flex-shrink: 0;
+    }
+    .news-title { font-size: 14px; font-weight: 600; color: #fff; line-height: 1.4; }
+    .news-summary { font-size: 12px; color: rgba(255,255,255,0.7); margin-top: 3px; }
+    #news-loading { color: rgba(255,255,255,0.7); font-size: 14px; }
+  </style>
+</head>
+<body>
+
+<!-- Sky SVG Background -->
+<svg id="sky-svg" viewBox="0 0 400 200" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="skyGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop id="sg0" offset="0%"/>
+      <stop id="sg1" offset="33%"/>
+      <stop id="sg2" offset="66%"/>
+      <stop id="sg3" offset="100%"/>
+    </linearGradient>
+    <radialGradient id="sunGlow" cx="50%" cy="50%" r="50%">
+      <stop id="sunGlowS0" offset="0%" stop-opacity="0.7"/>
+      <stop id="sunGlowS1" offset="60%" stop-opacity="0.15"/>
+      <stop id="sunGlowS2" offset="100%" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="moonGrad" cx="40%" cy="35%" r="60%">
+      <stop offset="0%" stop-color="#f0f4ff" stop-opacity="1"/>
+      <stop offset="100%" stop-color="#c0cce0" stop-opacity="1"/>
+    </radialGradient>
+    <filter id="cloudBlur">
+      <feGaussianBlur stdDeviation="1.2"/>
+    </filter>
+  </defs>
+
+  <rect id="skyRect" width="400" height="200" fill="url(#skyGrad)"/>
+  <g id="stars-group"></g>
+  <g id="moon-group"></g>
+  <g id="sun-group"></g>
+  <g id="clouds-group"></g>
+  <g id="horizon-group"></g>
+</svg>
+
+<!-- App -->
+<div id="app">
+  <div class="container">
+
+    <!-- Clock + Quote -->
+    <div id="clock-card" class="glass">
+      <div id="time-display">00:00:00</div>
+      <p id="date-display"></p>
+      <div id="quote-area">
+        <p id="quote-loading">불러오는 중...</p>
+        <p id="quote-text" style="display:none"></p>
+        <p id="quote-author" style="display:none"></p>
+        <p id="quote-hint" style="display:none"></p>
+      </div>
+    </div>
+
+    <!-- Weather -->
+    <div id="weather-card" class="glass">
+      <p class="card-label">날씨 · 천안</p>
+      <div id="weather-loading">날씨 불러오는 중...</div>
+      <div id="weather-content" style="display:none">
+        <div id="weather-main">
+          <span id="weather-icon"></span>
+          <div>
+            <div id="weather-temp"></div>
+            <div id="weather-cond"></div>
+          </div>
+        </div>
+        <div id="weather-stats">
+          <div class="stat-item"><div class="stat-label">최고</div><div class="stat-value" id="stat-high"></div></div>
+          <div class="stat-item"><div class="stat-label">최저</div><div class="stat-value" id="stat-low"></div></div>
+          <div class="stat-item"><div class="stat-label">습도</div><div class="stat-value" id="stat-humidity"></div></div>
+          <div class="stat-item"><div class="stat-label">바람</div><div class="stat-value" id="stat-wind"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- News -->
+    <div id="news-card" class="glass">
+      <div class="card-header">
+        <p class="card-label" style="margin:0">주요 뉴스</p>
+        <button id="refresh-btn">새로고침</button>
+      </div>
+      <div id="news-loading">최신 뉴스 불러오는 중...</div>
+      <div id="news-list" style="display:none"></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ── 카테고리 색상 ──
+const catColor = {
+  IT: "#818cf8", 경제: "#34d399", 사회: "#fb923c",
+  국제: "#60a5fa", 스포츠: "#f472b6"
+};
+
+// ── 날씨 아이콘 ──
+function weatherIcon(c) {
+  if (c === "맑음") return "☀";
+  if (c === "구름") return "⛅";
+  if (c === "흐림") return "☁";
+  if (c === "비")   return "🌧";
+  if (c === "눈")   return "❄";
+  return "🌤";
+}
+
+// ── 하늘 설정 ──
+function getSkyConfig(h) {
+  if (h >= 5 && h < 7)  return { skyColors:["#1a1a3e","#7b3f6e","#e8825a","#ffd580"], sunY:88,  sunColor:"#ffcc44", sunGlow:"#ff9933", cloudColor:"rgba(255,200,160,0.55)", cloudShadow:"rgba(200,100,60,0.25)",  stars:false, moon:false, horizon:"sunrise" };
+  if (h >= 7 && h < 11) return { skyColors:["#89c4f4","#b8dff5","#dceefb","#fef9ec"], sunY:70,  sunColor:"#ffe066", sunGlow:"#ffd700", cloudColor:"rgba(255,255,255,0.82)", cloudShadow:"rgba(180,210,240,0.35)", stars:false, moon:false, horizon:null };
+  if (h >= 11 && h < 16)return { skyColors:["#1e90ff","#42aaff","#74c6ff","#b8e0ff"], sunY:20,  sunColor:"#fff176", sunGlow:"#fffde7", cloudColor:"rgba(255,255,255,0.9)",  cloudShadow:"rgba(160,200,235,0.4)",  stars:false, moon:false, horizon:null };
+  if (h >= 16 && h < 19)return { skyColors:["#1a237e","#7e3f98","#e8572a","#ffcc44"], sunY:82,  sunColor:"#ffaa00", sunGlow:"#ff6600", cloudColor:"rgba(255,180,100,0.6)",  cloudShadow:"rgba(180,80,30,0.3)",   stars:false, moon:false, horizon:"sunset" };
+  if (h >= 19 && h < 21)return { skyColors:["#0d0d2b","#1a1a4e","#2e2260","#5c3a7a"], sunY:110, sunColor:"#aaa",    sunGlow:"#333",    cloudColor:"rgba(120,100,160,0.4)",  cloudShadow:"rgba(50,30,80,0.3)",    stars:true,  moon:false, horizon:null };
+  return { skyColors:["#020814","#050d1f","#0a1628","#0f2040"], sunY:130, sunColor:"#ddeeff", sunGlow:"#aaccff", cloudColor:"rgba(60,80,120,0.3)", cloudShadow:"rgba(0,0,0,0.4)", stars:true, moon:true, horizon:null };
+}
+
+// ── SVG 하늘 렌더 ──
+const cloudDefs = [
+  {x:5,  y:18, s:1.2,  spd:0.5},
+  {x:35, y:28, s:0.85, spd:0.35},
+  {x:60, y:14, s:1.0,  spd:0.45},
+  {x:78, y:32, s:0.7,  spd:0.28},
+  {x:90, y:20, s:0.95, spd:0.4},
+  {x:20, y:38, s:0.65, spd:0.3},
+  {x:50, y:42, s:0.9,  spd:0.38},
+];
+
+const NS = "http://www.w3.org/2000/svg";
+function svgEl(tag, attrs) {
+  const el = document.createElementNS(NS, tag);
+  for (const [k,v] of Object.entries(attrs)) el.setAttribute(k, v);
+  return el;
+}
+
+let cloudOffset = 0;
+let lastHour = -1;
+let cfg = null;
+
+function updateSkyGradient(h) {
+  cfg = getSkyConfig(h);
+  const [g0,g1,g2,g3] = cfg.skyColors;
+  document.getElementById("sg0").setAttribute("stop-color", g0);
+  document.getElementById("sg1").setAttribute("stop-color", g1);
+  document.getElementById("sg2").setAttribute("stop-color", g2);
+  document.getElementById("sg3").setAttribute("stop-color", g3);
+  document.getElementById("sunGlowS0").setAttribute("stop-color", cfg.sunGlow);
+  document.getElementById("sunGlowS1").setAttribute("stop-color", cfg.sunColor);
+  document.getElementById("sunGlowS2").setAttribute("stop-color", cfg.sunColor);
+
+  // Stars
+  const starsG = document.getElementById("stars-group");
+  starsG.innerHTML = "";
+  if (cfg.stars) {
+    for (let i = 0; i < 60; i++) {
+      const x = (i * 137.5) % 100;
+      const y = (i * 97.3) % 55;
+      const r = i % 3 === 0 ? 1.2 : 0.7;
+      const op = 0.5 + Math.sin(i) * 0.5;
+      starsG.appendChild(svgEl("circle", { cx:`${x}%`, cy:`${y}%`, r, fill:"white", opacity:op }));
+    }
+  }
+
+  // Moon
+  const moonG = document.getElementById("moon-group");
+  moonG.innerHTML = "";
+  if (cfg.moon) {
+    const g = svgEl("g", { transform:"translate(340,30)" });
+    g.appendChild(svgEl("circle", { r:"14", fill:"url(#moonGrad)", opacity:"0.95" }));
+    g.appendChild(svgEl("circle", { cx:"5", cy:"-4", r:"10", fill:g0, opacity:"0.85" }));
+    g.appendChild(svgEl("circle", { cx:"3", cy:"2",  r:"2.5", fill:"rgba(0,0,0,0.08)" }));
+    g.appendChild(svgEl("circle", { cx:"-4",cy:"6",  r:"1.5", fill:"rgba(0,0,0,0.06)" }));
+    g.appendChild(svgEl("circle", { cx:"6", cy:"7",  r:"2",   fill:"rgba(0,0,0,0.07)" }));
+    moonG.appendChild(g);
+  }
+
+  // Sun
+  const sunG = document.getElementById("sun-group");
+  sunG.innerHTML = "";
+  if (cfg.sunY < 105) {
+    const g = svgEl("g", { transform:`translate(60,${cfg.sunY})` });
+    g.appendChild(svgEl("circle", { r:"32", fill:"url(#sunGlow)", opacity:"0.7" }));
+    g.appendChild(svgEl("circle", { r:"12", fill:cfg.sunColor, opacity:"0.95" }));
+    g.appendChild(svgEl("circle", { r:"8",  fill:"white",  opacity:"0.4" }));
+    sunG.appendChild(g);
+  }
+
+  // Horizon effects
+  const horizonG = document.getElementById("horizon-group");
+  horizonG.innerHTML = "";
+  if (cfg.horizon === "sunset") {
+    horizonG.appendChild(svgEl("ellipse", { cx:"200", cy:"200", rx:"300", ry:"60", fill:"#ff6a00", opacity:"0.18" }));
+    horizonG.appendChild(svgEl("ellipse", { cx:"200", cy:"200", rx:"200", ry:"40", fill:"#ff9933", opacity:"0.12" }));
+  } else if (cfg.horizon === "sunrise") {
+    horizonG.appendChild(svgEl("ellipse", { cx:"200", cy:"200", rx:"280", ry:"55", fill:"#ffaa44", opacity:"0.15" }));
+  }
+}
+
+function updateClouds() {
+  if (!cfg) return;
+  cloudOffset = (cloudOffset + 0.08) % 400;
+  const cloudsG = document.getElementById("clouds-group");
+  cloudsG.innerHTML = "";
+  for (const c of cloudDefs) {
+    const cx = ((c.x + cloudOffset * c.spd) % 130) - 20;
+    const cy = c.y;
+    const s  = c.s;
+    const cc = cfg.cloudColor;
+    const cs = cfg.cloudShadow;
+    const g = svgEl("g", {
+      transform: `translate(${cx*4},${cy*1.8}) scale(${s})`,
+      filter: "url(#cloudBlur)"
+    });
+    g.appendChild(svgEl("ellipse", { cx:"0",   cy:"8",  rx:"38", ry:"10", fill:cs }));
+    g.appendChild(svgEl("ellipse", { cx:"0",   cy:"4",  rx:"38", ry:"12", fill:cc }));
+    g.appendChild(svgEl("ellipse", { cx:"-16", cy:"0",  rx:"20", ry:"13", fill:cc }));
+    g.appendChild(svgEl("ellipse", { cx:"14",  cy:"-1", rx:"24", ry:"15", fill:cc }));
+    g.appendChild(svgEl("ellipse", { cx:"0",   cy:"-6", rx:"18", ry:"13", fill:cc }));
+    cloudsG.appendChild(g);
+  }
+}
+
+// ── 시계 ──
+function pad(n) { return String(n).padStart(2,"0"); }
+
+function updateClock() {
+  const now = new Date();
+  const h = now.getHours();
+  document.getElementById("time-display").textContent =
+    `${pad(h)}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+  document.getElementById("date-display").textContent =
+    now.toLocaleDateString("ko-KR",{year:"numeric",month:"long",day:"numeric",weekday:"long"});
+
+  if (h !== lastHour) {
+    lastHour = h;
+    updateSkyGradient(h);
+  }
+}
+
+// ── Claude API ──
+async function callClaude(prompt, tools = []) {
+  const body = {
+    model: "claude-sonnet-4-20250514",
+    max_tokens: 1000,
+    messages: [{ role: "user", content: prompt }]
+  };
+  if (tools.length) body.tools = tools;
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body)
+  });
+  const data = await res.json();
+  return (data.content || []).map(i => i.text || "").filter(Boolean).join("") || "";
+}
+
+// ── 명언 ──
+async function fetchQuote() {
+  const h = new Date().getHours();
+  document.getElementById("quote-loading").style.display = "";
+  document.getElementById("quote-text").style.display = "none";
+  document.getElementById("quote-author").style.display = "none";
+  document.getElementById("quote-hint").style.display = "none";
+  try {
+    const raw = await callClaude(
+      `다음 세 가지 중 하나를 랜덤으로 골라 응답하세요: (1) 유명인 명언, (2) 짧은 동기부여 멘트, (3) 현재 시각(${h}시)에 맞는 따뜻한 인사말. 다른 텍스트 없이 순수 JSON만 반환하세요.\n형식: {"quote":"내용","author":"출처 또는 빈 문자열","type":"명언/멘트/인사 중 하나"}`
+    );
+    const q = JSON.parse(raw.replace(/```json|```/g,"").trim());
+    const qtEl = document.getElementById("quote-text");
+    qtEl.textContent = q.type === "명언" ? `"${q.quote}"` : q.quote;
+    qtEl.style.fontStyle = q.type === "명언" ? "italic" : "normal";
+    qtEl.style.display = "";
+    if (q.author) {
+      const qaEl = document.getElementById("quote-author");
+      qaEl.textContent = `— ${q.author}`;
+      qaEl.style.display = "";
+    }
+    const qhEl = document.getElementById("quote-hint");
+    qhEl.textContent = `${q.type} · 클릭해서 새로 보기`;
+    qhEl.style.display = "";
+  } catch {
+    const qtEl = document.getElementById("quote-text");
+    qtEl.textContent = "오늘도 한 걸음씩, 충분합니다.";
+    qtEl.style.fontStyle = "normal";
+    qtEl.style.display = "";
+    const qaEl = document.getElementById("quote-author");
+    qaEl.textContent = "— 작자미상";
+    qaEl.style.display = "";
+  } finally {
+    document.getElementById("quote-loading").style.display = "none";
+  }
+}
+
+// ── 날씨 ──
+async function fetchWeather() {
+  document.getElementById("weather-loading").style.display = "";
+  document.getElementById("weather-content").style.display = "none";
+  try {
+    const tools = [{ type: "web_search_20250305", name: "web_search" }];
+    const raw = await callClaude(
+      `천안시 충청남도 오늘(${new Date().toLocaleDateString("ko-KR")}) 실시간 날씨를 웹에서 검색하고 JSON으로만 응답하세요. 다른 텍스트 없이 순수 JSON만 반환하세요.\n형식: {"city":"천안","temp":숫자,"feels_like":숫자,"condition":"맑음/흐림/비/눈/구름 중 하나","humidity":숫자,"wind":숫자,"high":숫자,"low":숫자}`,
+      tools
+    );
+    renderWeather(JSON.parse(raw.replace(/```json|```/g,"").trim()));
+  } catch {
+    renderWeather({ city:"천안", temp:14, feels_like:12, condition:"구름", humidity:60, wind:3.2, high:17, low:9 });
+  }
+}
+
+function renderWeather(w) {
+  document.getElementById("weather-loading").style.display = "none";
+  document.getElementById("weather-icon").textContent = weatherIcon(w.condition);
+  document.getElementById("weather-temp").textContent = `${w.temp}°`;
+  document.getElementById("weather-cond").textContent = `${w.condition} · 체감 ${w.feels_like}°`;
+  document.getElementById("stat-high").textContent = `${w.high}°`;
+  document.getElementById("stat-low").textContent = `${w.low}°`;
+  document.getElementById("stat-humidity").textContent = `${w.humidity}%`;
+  document.getElementById("stat-wind").textContent = `${w.wind}m/s`;
+  document.getElementById("weather-content").style.display = "flex";
+}
+
+// ── 뉴스 ──
+async function fetchNews() {
+  document.getElementById("news-loading").style.display = "";
+  document.getElementById("news-list").style.display = "none";
+  document.getElementById("news-list").innerHTML = "";
+  try {
+    const tools = [{ type: "web_search_20250305", name: "web_search" }];
+    const raw = await callClaude(
+      `오늘(${new Date().toLocaleDateString("ko-KR")}) 한국 및 세계 주요 뉴스 5개를 웹 검색으로 찾아 JSON 배열로만 응답하세요. 다른 텍스트 없이 순수 JSON만 반환하세요.\n형식: [{"title":"뉴스 제목","category":"IT/경제/사회/국제/스포츠 중 하나","summary":"한 줄 요약(40자 이내)"}]`,
+      tools
+    );
+    renderNews(JSON.parse(raw.replace(/```json|```/g,"").trim()));
+  } catch {
+    renderNews([{ title:"뉴스를 불러오는 중 오류가 발생했습니다", category:"사회", summary:"잠시 후 다시 시도해주세요." }]);
+  }
+}
+
+function renderNews(items) {
+  document.getElementById("news-loading").style.display = "none";
+  const list = document.getElementById("news-list");
+  list.innerHTML = "";
+  items.forEach(item => {
+    const div = document.createElement("div");
+    div.className = "news-item";
+    const cat = document.createElement("span");
+    cat.className = "news-cat";
+    cat.textContent = item.category;
+    cat.style.background = catColor[item.category] || "#94a3b8";
+    const info = document.createElement("div");
+    const title = document.createElement("div");
+    title.className = "news-title";
+    title.textContent = item.title;
+    const summary = document.createElement("div");
+    summary.className = "news-summary";
+    summary.textContent = item.summary;
+    info.appendChild(title);
+    info.appendChild(summary);
+    div.appendChild(cat);
+    div.appendChild(info);
+    list.appendChild(div);
+  });
+  list.style.display = "flex";
+}
+
+// ── 이벤트 바인딩 ──
+document.getElementById("quote-area").addEventListener("click", fetchQuote);
+document.getElementById("refresh-btn").addEventListener("click", fetchNews);
+
+// ── 초기화 ──
+updateClock();
+setInterval(updateClock, 1000);
+requestAnimationFrame(function loop() {
+  updateClouds();
+  requestAnimationFrame(loop);
+});
+
+fetchQuote();
+fetchWeather();
+fetchNews();
+</script>
+</body>
+</html>
